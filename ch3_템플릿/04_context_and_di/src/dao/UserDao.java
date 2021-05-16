@@ -12,49 +12,35 @@ import java.sql.SQLException;
 
 public class UserDao {
 
-    private DataSource dataSource;
+    private DataSource dataSource; // db 연결 클래스
+    private JdbcContext jdbcContext; // 쿼리 전략 클래스
 
     public void setDataSource(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
-    // StatementStrategy stmt : 클라이언트가 호출할 때 넘겨줄 전략 파라미터
-    public void jdbcContextWithStatementStrategy(StatementStrategy stmt){
-        Connection con = null;
-        PreparedStatement ps = null;
-
-        try {
-            // db connection 가져오기
-            con = dataSource.getConnection();
-
-            // statement 적용
-            ps = stmt.makePreparedStatement(con);
-
-            ps.executeUpdate();
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            if(ps != null){ try { ps.close(); } catch (SQLException throwables) { } }
-            if (con != null) { try { con.close(); } catch (SQLException throwables) { } }
-        }
+    // JdbcContext 를 DI 받도록 만든다.
+    public void setJdbcContext(JdbcContext jdbcContext) {
+        this.jdbcContext = jdbcContext;
     }
 
-    public void add(final User user){
+    public void add(final User user) throws SQLException {
 
-        jdbcContextWithStatementStrategy(new StatementStrategy() {
 
-            @Override
-            public PreparedStatement makePreparedStatement(Connection con) throws SQLException {
+        this.jdbcContext.workWithStatementStrategy(
+                new StatementStrategy() {
+                    @Override
+                    public PreparedStatement makePreparedStatement(Connection con) throws SQLException {
+                        // 쿼리 준비
+                        PreparedStatement ps = con.prepareStatement("insert into user (id, name, password) value (?,?,?)");
+                        ps.setString(1, user.getId());
+                        ps.setString(2, user.getName());
+                        ps.setString(3, user.getPassword());
 
-                // 쿼리 준비
-                PreparedStatement ps = con.prepareStatement("insert into user (id, name, password) value (?,?,?)");
-                ps.setString(1, user.getId());
-                ps.setString(2, user.getName());
-                ps.setString(3, user.getPassword());
-
-                return ps;
-            }
-        });
+                        return ps;
+                    }
+                }
+        );
     }
 
     public User get(String id) throws SQLException {
@@ -87,11 +73,12 @@ public class UserDao {
     }
 
     public void deleteAll() throws SQLException {
-        jdbcContextWithStatementStrategy(new StatementStrategy() {
+        this.jdbcContext.workWithStatementStrategy(new StatementStrategy() {
             @Override
             public PreparedStatement makePreparedStatement(Connection c) throws SQLException {
                 PreparedStatement ps;
                 ps = c.prepareStatement("delete from user");
+
                 return ps;
             }
         });

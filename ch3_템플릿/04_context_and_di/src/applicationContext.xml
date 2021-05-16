@@ -11,7 +11,12 @@
     </bean>
 
     <bean id="userDao" class="dao.UserDao">
-        <property name="dataSource" ref="dataSource"/>
+        <property name="dataSource" ref="dataSource"/> <!--UserDao 내에 아직 jdbcContext 를 적용하지 않은 메소드가 있어서 제거 하지 않음-->
+        <property name="jdbcContext" ref="jdbcContext"/> <!--UserDao 는 JdbcContext 를  의존함-->
+    </bean>
+
+    <bean id="jdbcContext" class="dao.JdbcContext">
+        <property name="dataSource" ref="dataSource"/> <!--JdbcContext 는 DataSource 를 의존함 -->
     </bean>
 
 </beans>
