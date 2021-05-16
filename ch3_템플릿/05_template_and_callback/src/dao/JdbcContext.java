@@ -34,4 +34,16 @@ public class JdbcContext {
             if (c != null) { try { c.close(); } catch (SQLException e ) { }}
         }
     }
+
+    public void executeSql(final String query) throws SQLException {
+        workWithStatementStrategy(
+                new StatementStrategy() {
+                    // 변하지 않는 콜백 클래스 정의와 오브젝트 생성
+                    @Override
+                    public PreparedStatement makePreparedStatement(Connection con) throws SQLException {
+                        return con.prepareStatement(query);
+                    }
+                }
+        );
+    }
 }
