@@ -3,6 +3,7 @@ package dao;
 
 import domain.User;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -13,14 +14,12 @@ import java.sql.SQLException;
 public class UserDao {
 
     private DataSource dataSource; // db 연결 클래스
-    private JdbcContext jdbcContext; // 쿼리 전략 클래스
+    private JdbcTemplate jdbcTemplate; // JdbcTemplate
 
     // 수정자 메소드이면서 JdbcContext 에 대한 생성, DI 작업을 동시에 수행한다.
     public void setDataSource(DataSource dataSource) {
-        // JdbcContext 생성 (IoC)
-        this.jdbcContext = new JdbcContext();
-        // 의존 오브젝트 주임(DI)
-        this.jdbcContext.setDataSource(dataSource);
+        // JdbcTemplate 초기화
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
 
         this.dataSource = dataSource;
     }
