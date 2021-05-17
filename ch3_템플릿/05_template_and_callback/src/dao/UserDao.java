@@ -14,6 +14,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserDao {
 
@@ -76,5 +78,18 @@ public class UserDao {
     // 리턴 타입이 int 인 쿼리만 적어주면 된다.
     public int getCount() throws SQLException {
         return this.jdbcTemplate.queryForInt("select count(*) from user");
+    }
+
+    public List<User> getAll() {
+        return this.jdbcTemplate.query("select * from user order by id",
+                new RowMapper<>() {
+                    public User mapRow(ResultSet resultSet, int i) throws SQLException {
+                        User user = new User();
+                        user.setId(resultSet.getString("id"));
+                        user.setName(resultSet.getString("name"));
+                        user.setPassword(resultSet.getString("password"));
+                        return user;
+                    }
+                });
     }
 }
