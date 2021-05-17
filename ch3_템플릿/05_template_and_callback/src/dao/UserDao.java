@@ -2,9 +2,11 @@ package dao;
 
 
 import domain.User;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
+import org.springframework.jdbc.core.ResultSetExtractor;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -64,19 +66,27 @@ public class UserDao {
         this.jdbcTemplate.update("delete from user");
     }
 
+    // JdbcTemplate query() 를 이용해 만든 getCount()
+    /*public int getCount() throws SQLException {
+        return this.jdbcTemplate.query(new PreparedStatementCreator() {
+            // prepareStatement 객체를 템플릿으로 리턴
+            @Override
+            public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
+                return connection.prepareStatement("select count(*) from user");
+            }
+        }, new ResultSetExtractor<Integer>() {
+            // 쿼리에 대한 result 를 받을 수 있고 리턴받을 타입도 지정할 수 있다.
+            @Override
+            public Integer extractData(ResultSet resultSet) throws SQLException, DataAccessException {
+                resultSet.next();
+                return resultSet.getInt(1);
+            }
+        });
+    }*/
+
+    // JdbcTemplate queryForInt() 를 이용해 만든 getCount()
+    // 리턴 타입이 int 인 쿼리만 적어주면 된다.
     public int getCount() throws SQLException {
-        Connection con = dataSource.getConnection();
-
-        PreparedStatement ps = con.prepareStatement("select count(*) from user");
-
-        ResultSet rs = ps.executeQuery();
-        rs.next();
-        int count = rs.getInt(1);
-
-        rs.close();
-        ps.close();
-        con.close();
-
-        return count;
+        return this.jdbcTemplate.queryForInt("select count(*) from user");
     }
 }
