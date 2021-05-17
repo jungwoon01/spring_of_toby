@@ -7,6 +7,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.ResultSetExtractor;
+import org.springframework.jdbc.core.RowMapper;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -32,33 +33,20 @@ public class UserDao {
         this.jdbcTemplate.update("insert into user(id, name, password) values(?,?,?)", user.getId(), user.getName(), user.getPassword());
     }
 
-    public User get(String id) throws SQLException {
-
-        Connection con = dataSource.getConnection();
-
-        // 쿼리 준비
-        PreparedStatement ps = con.prepareStatement("select * from user where id = ?");
-        ps.setString(1, id);
-
-        // executeQuery() 는 쿼리를 실행한 결과 set 을 return 한다.
-        ResultSet rs = ps.executeQuery();
-        User user = null;
-        if (rs.next()) {
-            user = new User();
-            user.setId(rs.getString("id"));
-            user.setName(rs.getString("name"));
-            user.setPassword(rs.getString("password"));
-        }
-
-        // 연결 끊기
-        rs.close();
-        ps.close();
-        con.close();
-
-        if (user == null)
-            throw new EmptyResultDataAccessException(1);
-
-        return user;
+    public User get(String id) {
+        return this.jdbcTemplate.queryForObject("select * from user where id = ?",
+                new Object[]{id}, // SQL 에 바인딩할 파라미터 값. 가변인자 대신 벼열을 사용한다(뒤에 다른 파라미터가 있기 때문)
+                new RowMapper<User>() {
+                    @Override
+                    public User mapRow(ResultSet resultSet, int i) throws SQLException {
+                        User user = new User();
+                        user.setId(resultSet.getString("id"));
+                        user.setName(resultSet.getString("name"));
+                        user.setPassword(resultSet.getString("password"));
+                        return user;
+                    }
+                });
+        // ResultSet 한 로우의 결과를 오브젝트에 매핑해주는 RowMapper 콜백
     }
 
     // JdbcTemplate 의 update 메서드를 사용하는 deleteAll()
