@@ -154,4 +154,24 @@ public class UserDaoTest {
         assertThat(user1.getLogin(), is(user2.getLogin()));
         assertThat(user1.getRecommend(), is(user2.getRecommend()));
     }
+
+    @Test
+    public void update() {
+        dao.deleteAll();
+
+        dao.add(user1);
+        dao.add(user2);
+
+        user1.setName("길동");
+        user1.setPassword("2345");
+        user1.setLevel(Level.GOLD);
+        user1.setLogin(100);
+        user1.setRecommend(999);
+        dao.update(user1);
+
+        User user1Update = dao.get(user1.getId());
+        checkSameUser(user1Update, user1); // 정보가 변경 되었는지 확인
+        User user2Sam = dao.get(user2.getId());
+        checkSameUser(user2Sam, user2);
+    }
 }
