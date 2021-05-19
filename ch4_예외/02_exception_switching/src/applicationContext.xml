@@ -10,7 +10,7 @@
         <property name="password" value="1234"/>
     </bean>
 
-    <bean id="userDao" class="dao.UserDao">
+    <bean id="userDao" class="dao.UserDaoJdbc">
         <property name="dataSource" ref="dataSource"/> <!--UserDao 내에 아직 jdbcContext 를 적용하지 않은 메소드가 있어서 제거 하지 않음-->
     </bean>
 
