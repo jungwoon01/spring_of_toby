@@ -1,4 +1,5 @@
 import dao.UserDao;
+import domain.Level;
 import domain.User;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,9 +38,9 @@ public class UserDaoTest {
 
     @Before
     public void setUp() {
-        this.user1 = new User("bbb", "철수", "1234");
-        this.user2 = new User("ccc", "짱구", "4321");
-        this.user3 = new User("aaa", "유리", "5678");
+        this.user1 = new User("bbb", "철수", "1234", Level.BASIC, 1, 0);
+        this.user2 = new User("ccc", "짱구", "4321", Level.SILVER, 55, 10);
+        this.user3 = new User("aaa", "유리", "5678", Level.GOLD, 100, 40);
     }
 
 
@@ -56,12 +57,10 @@ public class UserDaoTest {
         assertThat(dao.getCount(), is(2));
 
         User userGet1 = dao.get(user1.getId());
-        assertThat(userGet1.getName(), is(user1.getName()));
-        assertThat(userGet1.getPassword(), is(user1.getPassword()));
+        checkSameUser(userGet1, user1);
 
         User userGet2 = dao.get(user2.getId());
-        assertThat(userGet2.getName(), is(user2.getName()));
-        assertThat(userGet2.getPassword(), is(user2.getPassword()));
+        checkSameUser(userGet2, user2);
 
     }
 
@@ -151,5 +150,8 @@ public class UserDaoTest {
         assertThat(user1.getId(), is(user2.getId()));
         assertThat(user1.getName(), is(user2.getName()));
         assertThat(user1.getPassword(), is(user2.getPassword()));
+        assertThat(user1.getLogin(), is(user2.getLogin()));
+        assertThat(user1.getLogin(), is(user2.getLogin()));
+        assertThat(user1.getRecommend(), is(user2.getRecommend()));
     }
 }
