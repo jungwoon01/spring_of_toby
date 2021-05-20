@@ -15,6 +15,8 @@ import java.util.List;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
+import static service.UserService.MIN_LOG_COUNT_FOR_SILVER;
+import static service.UserService.MIN_RECOMMEND_FOR_GOLD;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations = "/applicationContext.xml")
@@ -32,10 +34,10 @@ public class UserServiceTest {
     @Before
     public void setUp() {
         users = Arrays.asList(
-                new User("aaa", "박범진", "p1", Level.BASIC, 49, 0),
-                new User("bbb", "강성명", "p2", Level.BASIC, 50, 0),
-                new User("ccc", "신승환", "p3", Level.SILVER, 60, 29),
-                new User("ddd", "이상호", "p4", Level.SILVER, 60, 30),
+                new User("aaa", "박범진", "p1", Level.BASIC, MIN_LOG_COUNT_FOR_SILVER-1, 0),
+                new User("bbb", "강성명", "p2", Level.BASIC, MIN_LOG_COUNT_FOR_SILVER, 0),
+                new User("ccc", "신승환", "p3", Level.SILVER, 60, MIN_RECOMMEND_FOR_GOLD-1),
+                new User("ddd", "이상호", "p4", Level.SILVER, 60, MIN_RECOMMEND_FOR_GOLD),
                 new User("eee", "오민규", "p5", Level.GOLD, 100, 100)
         );
     }
@@ -54,12 +56,12 @@ public class UserServiceTest {
 
         userService.upgradeLevels();
 
-        // 각 사용자별로 업그레이드 후의 예상 레벨을 검증한다.
-        checkLevel(users.get(0), Level.BASIC);
-        checkLevel(users.get(1), Level.SILVER);
-        checkLevel(users.get(2), Level.SILVER);
-        checkLevel(users.get(3), Level.GOLD);
-        checkLevel(users.get(4), Level.GOLD);
+        // 다음 레벨로 업그레이드될 것인가 아닌가를 지정한다.
+        checkLevel(users.get(0), false);
+        checkLevel(users.get(1), true);
+        checkLevel(users.get(2), false);
+        checkLevel(users.get(3), true);
+        checkLevel(users.get(4), false);
     }
 
     @Test
@@ -83,9 +85,13 @@ public class UserServiceTest {
         assertThat(userWithoutLevel.getLevel(), is(Level.BASIC)); // 레벨 없는 유저는 BASIC 으로 초기화
     }
 
-    private void checkLevel(User user, Level expectedLevel) {
-        // DB 에서 사용자 정보를 가져와 레벨을 확인하는 코드가 중복되므로 헬퍼 메소드로 분리했다.
+    private void checkLevel(User user, boolean upgraded) {
         User userUpdate = userDao.get(user.getId());
-        assertThat(userUpdate.getLevel(), is(expectedLevel));
+        if (upgraded) {
+            assertThat(userUpdate.getLevel(), is(user.getLevel().nextLevel())); // 다음 레벨이 무엇인지는 Level 에게 물어보면 된다.
+        }
+        else {
+            assertThat(userUpdate.getLevel(), is(user.getLevel())); // 업그레이드가 일어나지 않았는지 확인
+        }
     }
 }
