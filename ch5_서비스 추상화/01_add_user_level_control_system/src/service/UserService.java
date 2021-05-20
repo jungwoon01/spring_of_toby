@@ -14,6 +14,13 @@ public class UserService {
         this.userDao = userDao;
     }
 
+    // 사용자 추가 메소드
+    public void add(User user) {
+        // 처음 가입하는 사용자는 BASIC 레벨이 된다.
+        if (user.getLevel() == null) user.setLevel(Level.BASIC);
+        userDao.add(user);
+    }
+
     public void upgradeLevels() {
         List<User> users = userDao.getAll();
         for(User user: users) {
