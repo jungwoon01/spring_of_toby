@@ -52,7 +52,7 @@ public class UserService {
     }
 
     // 레벨 업그레이드 작업 메소드
-    private void upgradeLevel(User user) {
+    protected void upgradeLevel(User user) { // 테스트를 위해 protected 로 설정
         user.upgradeLevel();
         userDao.update(user);
     }

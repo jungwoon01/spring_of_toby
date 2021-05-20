@@ -17,6 +17,7 @@ import java.util.List;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import static service.UserService.MIN_LOG_COUNT_FOR_SILVER;
 import static service.UserService.MIN_RECOMMEND_FOR_GOLD;
 
@@ -95,5 +96,47 @@ public class UserServiceTest {
         else {
             assertThat(userUpdate.getLevel(), is(user.getLevel())); // 업그레이드가 일어나지 않았는지 확인
         }
+    }
+
+    // 예외 발생시 작업 취소 여부 테스트
+    @Test
+    public void upgradeAllOrNothing() {
+        // 예외를 발생시킬 네 번째 사용자의 id를 넣어서 테스트 용 UserService 대역 오브젝트를 생성한다.
+        UserService testUserService = new TestUserService(users.get(3).getId());
+        testUserService.setUserDao(this.userDao); // userDao 수동 주입
+
+        userDao.deleteAll();
+        for(User user : users) userDao.add(user);
+
+        try {
+            testUserService.upgradeLevels();
+            fail("TestUserServiceException expected"); // TestUserService 는 업그레이드 작업 중에 예외가 발생해야한다.
+        }
+        catch (TestUserServiceException e) { // 예외를 잡아서 계속 진행되도록 한다. 그 외의 예외라면 테스트 실패
+
+        }
+
+        // 예외가 발생하기 전에 레벨 변경이 있었던 사용자의 레벨이 처음 상태로 돌아왔나 확인
+        checkLevel(users.get(1), false);
+    }
+
+    // 테스트를 위한 UserService 상속 받은 static 클래스
+    static class TestUserService extends UserService {
+        private String id;
+
+        private TestUserService(String id) { // 예외를 발생시킬 id 지정
+            this.id = id;
+        }
+
+        @Override
+        protected void upgradeLevel(User user) {
+            // 지정된 id의 User 오브젝트가 발견되면 예외를 던져서 작업을 강제로 중단.
+            if (user.getId().equals(this.id)) throw new TestUserServiceException();
+            super.upgradeLevel(user);
+        }
+    }
+
+    // 런타임예외 클래스
+    static class TestUserServiceException extends RuntimeException {
     }
 }
