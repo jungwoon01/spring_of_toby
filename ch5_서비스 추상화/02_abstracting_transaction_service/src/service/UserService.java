@@ -25,10 +25,10 @@ public class UserService {
         this.userDao = userDao;
     }
 
-    // Connection 을 생성할 때 사용할 DataSource 를 DI 받도록 한다.
-    private DataSource dataSource;
-    public void setDataSource(DataSource dataSource) {
-        this.dataSource = dataSource;
+    // 프로퍼티 이름은 관례를 따라 transactionManager 라고 만드는 것이 편하다.
+    private PlatformTransactionManager transactionManager;
+    public void setTransactionManager(PlatformTransactionManager transactionManager) {
+        this.transactionManager = transactionManager;
     }
 
     // 사용자 추가 메소드
@@ -39,9 +39,6 @@ public class UserService {
     }
 
     public void upgradeLevels(){
-        // JDBC 트랜잭션 추상 오브젝트 생성
-        PlatformTransactionManager transactionManager = new DataSourceTransactionManager(dataSource);
-
         // 트랜잭션 시작
         TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
 
