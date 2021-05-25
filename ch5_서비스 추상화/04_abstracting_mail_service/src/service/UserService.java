@@ -3,19 +3,14 @@ package service;
 import dao.UserDao;
 import domain.Level;
 import domain.User;
+import org.springframework.mail.MailSender;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 
-import javax.mail.Message;
-import javax.mail.MessagingException;
-import javax.mail.Session;
-import javax.mail.Transport;
-import javax.mail.internet.AddressException;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
 import java.util.List;
-import java.util.Properties;
 
 public class UserService {
     public static final int MIN_LOG_COUNT_FOR_SILVER = 50;
@@ -31,6 +26,12 @@ public class UserService {
     private PlatformTransactionManager transactionManager;
     public void setTransactionManager(PlatformTransactionManager transactionManager) {
         this.transactionManager = transactionManager;
+    }
+
+    // 메일 전송 기능을 가진 오브젝트를 DI 받는 변수와 메소드
+    private MailSender mailSender;
+    public void setMailSender(MailSender mailSender) {
+        this.mailSender = mailSender;
     }
 
     // 사용자 추가 메소드
@@ -85,24 +86,15 @@ public class UserService {
         sendUpgradeEMail(user);
     }
 
-    // JavaMail 을 이용한 메일 발송 메소드
+    // 스프링의 MailSender 를 이용한 메일 발송 메소드
     private void sendUpgradeEMail(User user) {
-        Properties props = new Properties();
-        props.put("mail.smtp.host", "mail.ksug.ort");
-        Session s = Session.getInstance(props, null);
+        // MailMessage 인터페이스의 구현 클래스 오브젝트를 만들어 메일 내용을 작성한다.
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(user.getEmail());
+        mailMessage.setFrom("useradmin@ksug.org");
+        mailMessage.setSubject("Upgrade 안내");
+        mailMessage.setText("사용자님의 등급이 올랐습니다.");
 
-        MimeMessage message = new MimeMessage(s);
-        try {
-            message.setFrom(new InternetAddress("useradmin@ksug.org"));
-            message.addRecipient(Message.RecipientType.TO, new InternetAddress("useradmin@ksug.org"));
-            message.setSubject("Upgrade  안내");
-            message.setText("사용자님의 등급이 " + user.getLevel().name() + "로 업그레이드되었습니다.");
-
-            Transport.send(message);
-        } catch (AddressException e) {
-            throw new RuntimeException(e);
-        } catch (MessagingException e) {
-            throw new RuntimeException(e);
-        }
+        mailSender.send(mailMessage);
     }
 }
