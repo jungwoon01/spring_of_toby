@@ -3,7 +3,11 @@ package service;
 import dao.UserDao;
 import domain.Level;
 import domain.User;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DataSourceUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import javax.sql.DataSource;
@@ -34,12 +38,12 @@ public class UserService {
         userDao.add(user);
     }
 
-    public void upgradeLevels() throws Exception {
-        // 트랜잭션 동기화 관리자를 이용해 동기화 작업을 초기화한다.
-        TransactionSynchronizationManager.initSynchronization();
-        // DB 커넥션을 생성하고 트랜잭션을 시작한다. 이후의 DAO 작업은 모두 여기서 시작한 트랜잭션안에서 진행된다.
-        Connection c = DataSourceUtils.getConnection(dataSource); // DB 커넥션 생성과 동기화를 함께 해주는 유틸리티 메소드
-        c.setAutoCommit(false);
+    public void upgradeLevels(){
+        // JDBC 트랜잭션 추상 오브젝트 생성
+        PlatformTransactionManager transactionManager = new DataSourceTransactionManager(dataSource);
+
+        // 트랜잭션 시작
+        TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
 
         try {
             // 모든 사용자 정보를 가져와 한 명씩 업그레이드가 가능한지 확인하고, 가능하면 업그레이드를 한다.
@@ -49,18 +53,11 @@ public class UserService {
                     upgradeLevel(user);
                 }
             }
-            c.commit();
+            transactionManager.commit(status);
         }
         catch (Exception e) {
-            c.rollback();
+            transactionManager.rollback(status);
             throw e;
-        }
-        finally {
-            // 스프링 유틸리티 메소드를 이용해 DB  커넥션을 안전하게 닫는다.
-            DataSourceUtils.releaseConnection(c, dataSource);
-            // 동기화 작업 종료 및 정리
-            TransactionSynchronizationManager.unbindResource(this.dataSource);
-            TransactionSynchronizationManager.clearSynchronization();
         }
     }
 
