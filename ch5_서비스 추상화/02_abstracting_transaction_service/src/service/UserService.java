@@ -3,17 +3,28 @@ package service;
 import dao.UserDao;
 import domain.Level;
 import domain.User;
+import org.springframework.jdbc.datasource.DataSourceUtils;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 
 public class UserService {
     public static final int MIN_LOG_COUNT_FOR_SILVER = 50;
     public static final int MIN_RECOMMEND_FOR_GOLD = 30;
 
+    // Connection 을 생성할 때 사용할 DataSource 를 DI 받도록 한다.
     UserDao userDao;
-
     public void setUserDao(UserDao userDao) {
         this.userDao = userDao;
+    }
+
+    // Connection 을 생성할 때 사용할 DataSource 를 DI 받도록 한다.
+    private DataSource dataSource;
+    public void setDataSource(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     // 사용자 추가 메소드
@@ -23,13 +34,33 @@ public class UserService {
         userDao.add(user);
     }
 
-    public void upgradeLevels() {
-        // 모든 사용자 정보를 가져와 한 명씩 업그레이드가 가능한지 확인하고, 가능하면 업그레이드를 한다.
-        List<User> users = userDao.getAll();
-        for(User user : users) {
-            if (canUpgradeLevel(user)) {
-                upgradeLevel(user);
+    public void upgradeLevels() throws Exception {
+        // 트랜잭션 동기화 관리자를 이용해 동기화 작업을 초기화한다.
+        TransactionSynchronizationManager.initSynchronization();
+        // DB 커넥션을 생성하고 트랜잭션을 시작한다. 이후의 DAO 작업은 모두 여기서 시작한 트랜잭션안에서 진행된다.
+        Connection c = DataSourceUtils.getConnection(dataSource); // DB 커넥션 생성과 동기화를 함께 해주는 유틸리티 메소드
+        c.setAutoCommit(false);
+
+        try {
+            // 모든 사용자 정보를 가져와 한 명씩 업그레이드가 가능한지 확인하고, 가능하면 업그레이드를 한다.
+            List<User> users = userDao.getAll();
+            for (User user : users) {
+                if (canUpgradeLevel(user)) {
+                    upgradeLevel(user);
+                }
             }
+            c.commit();
+        }
+        catch (Exception e) {
+            c.rollback();
+            throw e;
+        }
+        finally {
+            // 스프링 유틸리티 메소드를 이용해 DB  커넥션을 안전하게 닫는다.
+            DataSourceUtils.releaseConnection(c, dataSource);
+            // 동기화 작업 종료 및 정리
+            TransactionSynchronizationManager.unbindResource(this.dataSource);
+            TransactionSynchronizationManager.clearSynchronization();
         }
     }
 
