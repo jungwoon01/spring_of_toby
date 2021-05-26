@@ -6,6 +6,7 @@ import domain.User;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSender;
@@ -26,6 +27,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.*;
 import static service.UserServiceImpl.MIN_LOG_COUNT_FOR_SILVER;
 import static service.UserServiceImpl.MIN_RECOMMEND_FOR_GOLD;
 
@@ -158,6 +160,40 @@ public class UserServiceTest {
 
         // 예외가 발생하기 전에 레벨 변경이 있었던 사용자의 레벨이 처음 상태로 돌아왔나 확인
         checkLevel(users.get(1), false);
+    }
+
+    @Test
+    public void mockUpgradeLevels() throws Exception {
+        UserServiceImpl userServiceImpl = new UserServiceImpl();
+
+        // 다이내믹한 목 오브젝트 생성과 메소드의 리턴 값 설정, 그리고 DI 세 줄이면 충분하다.
+        UserDao mockUserDao = mock(UserDao.class);
+        when(mockUserDao.getAll()).thenReturn(this.users);
+        userServiceImpl.setUserDao(mockUserDao);
+
+        // 리턴 값이 없는 메소드를 가진 목 오브젝트는 더욱 간단하게 만들 수 있다.
+         MailSender mockMailSender = mock(MailSender.class);
+         userServiceImpl.setMailSender(mockMailSender);
+
+        // 업그레이드 테스트, 메일 발송이 일어나면 MockMailSender 오브젝트의 리스트에 그 결과가 저장된다.
+        userServiceImpl.upgradeLevels();
+
+        // 목 오브젝트가 제공하는 검증 기능을 통해서 어떤 메소드가 몇 번 호출 됐는지,
+        // 파라미터는 무엇인지 확인할 수 있다.
+        verify(mockUserDao, times(2)).update(any(User.class)); // any()를 사용하면 파미터를 무시하고 호출 횟수만 확인할 수 있다.
+        verify(mockUserDao).update(users.get(1)); // users.get(1)을 파라미터로 update()가 호출된 적이 있는지를 확인해준다.
+        assertThat(users.get(1).getLevel(), is(Level.SILVER));
+        verify(mockUserDao).update(users.get(3)); // users.get(3)을 파라미터로 update()가 호출된 적이 있는지를 확인해준다.
+        assertThat(users.get(3).getLevel(), is(Level.GOLD));
+
+        // ArgumentCaptor 라는 것을 사용해서 실제 MailSender 목 오브젝트에 전달된 파라미터를 가져와 내용을 검증하는 방법을 사용했다.
+        // 파라미터를 직접 비교하기보다는 파라미터의 내부 정보를 확인해야 하는 경우에 유용하다.
+        ArgumentCaptor<SimpleMailMessage> mailMassageArg = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        // 파라미터를 정밀하게 검사하기 위해 캡처할 수도 있다.
+        verify(mockMailSender, times(2)).send(mailMassageArg.capture());
+        List<SimpleMailMessage> mailMessages = mailMassageArg.getAllValues();
+        assertThat(mailMessages.get(0).getTo()[0], is(users.get(1).getEmail()));
+        assertThat(mailMessages.get(1).getTo()[0], is(users.get(3).getEmail()));
     }
 
     public void checkUserAndLevel(User updated, String expectedId, Level expectedLevel) {
