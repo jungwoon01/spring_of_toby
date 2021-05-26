@@ -45,18 +45,24 @@ public class UserService {
         TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
 
         try {
-            // 모든 사용자 정보를 가져와 한 명씩 업그레이드가 가능한지 확인하고, 가능하면 업그레이드를 한다.
-            List<User> users = userDao.getAll();
-            for (User user : users) {
-                if (canUpgradeLevel(user)) {
-                    upgradeLevel(user);
-                }
-            }
+            upgradeLevelsInternal();
+        // 트랜잭션 끝
             transactionManager.commit(status);
         }
         catch (Exception e) {
             transactionManager.rollback(status);
             throw e;
+        }
+    }
+
+    // 분리된 비즈니스 로직 코드. 트랜잭션을 적용하기 전과 동일하다.
+    private void upgradeLevelsInternal() {
+        // 모든 사용자 정보를 가져와 한 명씩 업그레이드가 가능한지 확인하고, 가능하면 업그레이드를 한다.
+        List<User> users = userDao.getAll();
+        for (User user : users) {
+            if (canUpgradeLevel(user)) {
+                upgradeLevel(user);
+            }
         }
     }
 
