@@ -14,10 +14,12 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.PlatformTransactionManager;
+import service.TransactionHandler;
 import service.UserService;
 import service.UserServiceImpl;
 import service.UserServiceTx;
 
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -140,10 +142,17 @@ public class UserServiceTest {
         testUserService.setUserDao(this.userDao); // userDao 수동 주입
         testUserService.setMailSender(mailSender); // MailSender 수동 DI
 
-        // 트랜잭션 기능을 분리한 UserServiceTx 는 예외 발생용으로 수정할 필요가 없으니 그대로 사용한다.
-        UserServiceTx txUserService = new UserServiceTx();
-        txUserService.setTransactionManager(transactionManager);
-        txUserService.setUserService(testUserService);
+        // 트랜잭션 핸들러가 필요한 정보와 오브젝트를 DI 해준다.
+        TransactionHandler txHandler = new TransactionHandler();
+        txHandler.setTarget(testUserService);
+        txHandler.setTransactionManager(transactionManager);
+        txHandler.setPattern("upgradeLevels");
+        // UserService 인터페이스 타입의 다이나믹 프록시 생성
+        UserService txUserService = (UserService) Proxy.newProxyInstance(
+                getClass().getClassLoader(),
+                new Class[] {UserService.class},
+                txHandler
+        );
 
         userDao.deleteAll();
         for(User user : users) userDao.add(user);
