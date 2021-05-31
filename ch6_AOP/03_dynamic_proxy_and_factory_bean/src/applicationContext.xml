@@ -19,9 +19,12 @@
         <property name="mailSender" ref="mailSender"/>
     </bean>
 
-    <bean id="userService" class="service.UserServiceTx">
+    <bean id="userService" class="service.TxProxyFactoryBean">
+        <property name="target" ref="userServiceImpl"/>
         <property name="transactionManager" ref="transactionManager"/>
-        <property name="userService" ref="userServiceImpl"/>
+        <property name="pattern" value="upgradeLevels"/>
+        <!--Class 타입은 value 를 이용해 클래스 또는 인터페이스의 이름을 넣어준면 된다.-->
+        <property name="serviceInterface" value="service.UserService"/>
     </bean>
 
     <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager" >

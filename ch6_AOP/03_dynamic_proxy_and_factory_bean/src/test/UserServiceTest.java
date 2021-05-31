@@ -8,16 +8,18 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.PlatformTransactionManager;
 import service.TransactionHandler;
+import service.TxProxyFactoryBean;
 import service.UserService;
 import service.UserServiceImpl;
-import service.UserServiceTx;
 
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -56,6 +58,9 @@ public class UserServiceTest {
     @Autowired
     MailSender mailSender;
 
+    @Autowired
+    ApplicationContext context;
+
     List<User> users; // 픽스쳐
 
     @Before
@@ -90,7 +95,6 @@ public class UserServiceTest {
 
         // DB에 저장된 결과를 가져와 확인한다.
         User userWithLevelRead = userDao.get(userWithLevel.getId());
-        User userWithoutLevelRead = userDao.get(userWithoutLevel.getId());
 
         assertThat(userWithLevelRead.getLevel(), is(userWithLevel.getLevel())); // 레벨이 있는 유저는 본인의 레벨 그대로
         assertThat(userWithoutLevel.getLevel(), is(Level.BASIC)); // 레벨 없는 유저는 BASIC 으로 초기화
@@ -136,23 +140,18 @@ public class UserServiceTest {
 
     // 예외 발생시 작업 취소 여부 테스트
     @Test
-    public void upgradeAllOrNothing(){
+    @DirtiesContext // 컨택스트 무효화 애노테이션
+    public void upgradeAllOrNothing() throws Exception {
         // 예외를 발생시킬 네 번째 사용자의 id를 넣어서 테스트 용 UserService 대역 오브젝트를 생성한다.
         UserServiceImpl testUserService = new TestUserService(users.get(3).getId());
         testUserService.setUserDao(this.userDao); // userDao 수동 주입
         testUserService.setMailSender(mailSender); // MailSender 수동 DI
 
-        // 트랜잭션 핸들러가 필요한 정보와 오브젝트를 DI 해준다.
-        TransactionHandler txHandler = new TransactionHandler();
-        txHandler.setTarget(testUserService);
-        txHandler.setTransactionManager(transactionManager);
-        txHandler.setPattern("upgradeLevels");
-        // UserService 인터페이스 타입의 다이나믹 프록시 생성
-        UserService txUserService = (UserService) Proxy.newProxyInstance(
-                getClass().getClassLoader(),
-                new Class[] {UserService.class},
-                txHandler
-        );
+        // 팩토리 빈 자체를 가져와야 하므로 빈 이름에 &를 넣어준다.
+        TxProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", TxProxyFactoryBean.class);
+        txProxyFactoryBean.setTarget(testUserService);
+        // 변경된 타깃 설정을 이용해서 트랜잭션 다이나믹 프록시 오브젝트를 다시 생성한다.
+        UserService txUserService = (UserService) txProxyFactoryBean.getObject();
 
         userDao.deleteAll();
         for(User user : users) userDao.add(user);
