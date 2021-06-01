@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
+        <property name="driverClass" value="com.mysql.cj.jdbc.Driver"/>
+        <property name="url" value="jdbc:mysql://localhost/spring_of_toby"/>
+        <property name="username" value="root"/>
+        <property name="password" value="1234"/>
+    </bean>
+
+    <bean id="userDao" class="dao.UserDaoJdbc">
+        <property name="dataSource" ref="dataSource"/> <!--UserDao 내에 아직 jdbcContext 를 적용하지 않은 메소드가 있어서 제거 하지 않음-->
+    </bean>
+
+    <bean id="userServiceImpl" class="service.UserServiceImpl">
+        <property name="userDao" ref="userDao"/>
+        <property name="mailSender" ref="mailSender"/>
+    </bean>
+
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager" >
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <bean id="mailSender" class="test.DummyMailSender"/>
+
+    <!--트랜잭션 어드바이스 빈 설정-->
+    <bean id="transactionAdvice" class="service.TransactionAdvice">
+        <property name="transactionManager" ref="transactionManager"/>
+    </bean>
+
+    <!--포인트컷 빈 설정-->
+    <bean id="transactionPointcut" class="org.springframework.aop.support.NameMatchMethodPointcut">
+        <property name="mappedName" value="upgrade*" />
+    </bean>
+
+    <!--어드바이저 설정-->
+    <bean id="transactionAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
+        <property name="advice" ref="transactionAdvice" />
+        <property name="pointcut" ref="transactionPointcut"/>
+    </bean>
+
+    <!--ProxyFactoryBean 설정-->
+    <bean id="userService" class="org.springframework.aop.framework.ProxyFactoryBean" >
+        <property name="target" ref="userServiceImpl" />
+        <!--
+        어드바이스와 어드바이저를 동시에 설정해줄 수 있는 프로퍼티.
+        리스트에 어드바이스나 어드바이저의 빈 다이디를 값으로 넣어주면 된다.
+        기존의 ref 애트리뷰트를 사용하는 DI 와는 방식이 다름에 주의해야 한다.
+        -->
+        <property name="interceptorNames">
+            <list>
+                <!--한개 이상의 <value> 태그를 넣을 수 있다.-->
+                <value>transactionAdvisor</value>
+            </list>
+        </property>
+    </bean>
+</beans>
