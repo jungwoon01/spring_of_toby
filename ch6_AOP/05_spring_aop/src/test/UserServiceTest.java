@@ -43,10 +43,6 @@ public class UserServiceTest {
     @Autowired
     UserService userService;
 
-    // MockMailSender 설정해 주기 위해 사용.
-    @Autowired
-    UserServiceImpl userServiceImpl;
-
     @Autowired
     UserDao userDao;
 
@@ -58,6 +54,11 @@ public class UserServiceTest {
 
     @Autowired
     ApplicationContext context;
+
+    // 같은 타입의 빈이 두 개 존재하기 때문에 필드 이름을 기준으로 주입될 빈이 결정된다.
+    // 자동 프록시 생성기에 의해 트랜잭션 부가기능이 testUserService 빈에 적용됐는지를 확인하는 것이 목적이다.
+    @Autowired
+    UserService testUserService;
 
     List<User> users; // 픽스쳐
 
@@ -140,24 +141,13 @@ public class UserServiceTest {
     @Test
     @DirtiesContext // 컨택스트 무효화 애노테이션
     public void upgradeAllOrNothing() throws Exception {
-        // 예외를 발생시킬 네 번째 사용자의 id를 넣어서 테스트 용 UserService 대역 오브젝트를 생성한다.
-        UserServiceImpl testUserService = new TestUserService(users.get(3).getId());
-        testUserService.setUserDao(this.userDao); // userDao 수동 주입
-        testUserService.setMailSender(mailSender); // MailSender 수동 DI
-
-        // 팩토리 빈 자체를 가져와야 하므로 빈 이름에 &를 넣어준다.
-        ProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", ProxyFactoryBean.class);
-        txProxyFactoryBean.setTarget(testUserService);
-        // 변경된 타깃 설정을 이용해서 트랜잭션 다이나믹 프록시 오브젝트를 다시 생성한다.
-        UserService txUserService = (UserService) txProxyFactoryBean.getObject();
-
         userDao.deleteAll();
         for(User user : users) userDao.add(user);
 
 
         try {
             // 트랜잭션 기능을 분리한 오브젝트를 통해 예외 발생용 TestUserService 가 호출되게 해야 한다.
-            txUserService.upgradeLevels();
+            testUserService.upgradeLevels();
             fail("TestUserServiceException expected"); // TestUserService 는 업그레이드 작업 중에 예외가 발생해야한다.
         }
         catch (TestUserServiceException e) { // 예외를 잡아서 계속 진행되도록 한다. 그 외의 예외라면 테스트 실패
@@ -207,13 +197,10 @@ public class UserServiceTest {
         assertThat(updated.getLevel(), is(expectedLevel));
     }
 
-    // 테스트를 위한 UserService 상속 받은 static 클래스
-    static class TestUserService extends UserServiceImpl {
-        private String id;
-
-        private TestUserService(String id) { // 예외를 발생시킬 id 지정
-            this.id = id;
-        }
+    // 트렌젝션 테스트를 위한 UserService 클래스
+    // 포인트컷의 클래스 필터에 선정되도록 이름 변경
+    static class TestUserServiceImpl extends UserServiceImpl {
+        private String id = "ddd"; // 테스트 픽스처의 users(3)의 id 값을 고정시킴
 
         @Override
         protected void upgradeLevel(User user) {

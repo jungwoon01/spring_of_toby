@@ -14,7 +14,7 @@
         <property name="dataSource" ref="dataSource"/> <!--UserDao 내에 아직 jdbcContext 를 적용하지 않은 메소드가 있어서 제거 하지 않음-->
     </bean>
 
-    <bean id="userServiceImpl" class="service.UserServiceImpl">
+    <bean id="userService" class="service.UserServiceImpl">
         <property name="userDao" ref="userDao"/>
         <property name="mailSender" ref="mailSender"/>
     </bean>
@@ -31,8 +31,9 @@
     </bean>
 
     <!--포인트컷 빈 설정-->
-    <bean id="transactionPointcut" class="org.springframework.aop.support.NameMatchMethodPointcut">
-        <property name="mappedName" value="upgrade*" />
+    <bean id="transactionPointcut" class="service.NameMatchClassMethodPointcut">
+        <property name="mappedClassName" value="*ServiceImpl" /> <!--클래스 이름 패턴-->
+        <property name="mappedName" value="upgrade*" /> <!--메소드 이름 패턴-->
     </bean>
 
     <!--어드바이저 설정-->
@@ -41,19 +42,14 @@
         <property name="pointcut" ref="transactionPointcut"/>
     </bean>
 
-    <!--ProxyFactoryBean 설정-->
-    <bean id="userService" class="org.springframework.aop.framework.ProxyFactoryBean" >
-        <property name="target" ref="userServiceImpl" />
-        <!--
-        어드바이스와 어드바이저를 동시에 설정해줄 수 있는 프로퍼티.
-        리스트에 어드바이스나 어드바이저의 빈 다이디를 값으로 넣어주면 된다.
-        기존의 ref 애트리뷰트를 사용하는 DI 와는 방식이 다름에 주의해야 한다.
-        -->
-        <property name="interceptorNames">
-            <list>
-                <!--한개 이상의 <value> 태그를 넣을 수 있다.-->
-                <value>transactionAdvisor</value>
-            </list>
-        </property>
-    </bean>
+    <!--프록시 자동생성 설정-->
+    <bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" />
+
+    <!--테스트용 UserService-->
+    <!--스태틱 멤버 클래스는 $로 지정한다-->
+    <bean
+            id="testUserService"
+            class="test.UserServiceTest$TestUserServiceImpl"
+            parent="userService"
+    />
 </beans>
