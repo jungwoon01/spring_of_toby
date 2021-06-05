@@ -3,6 +3,8 @@ package test.dynamic_proxy;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.junit.Test;
+import org.springframework.aop.ClassFilter;
+import org.springframework.aop.Pointcut;
 import org.springframework.aop.framework.ProxyFactoryBean;
 import org.springframework.aop.support.DefaultPointcutAdvisor;
 import org.springframework.aop.support.NameMatchMethodPointcut;
@@ -74,6 +76,51 @@ public class ProxyTest {
             // MethodInvocation 은 메소드 정보와 함께 타깃 오브젝트를 알고 있기 때문
             String ret = (String)methodInvocation.proceed();
             return ret.toUpperCase(); // 부가기능
+        }
+    }
+
+    // 확장된 포인트컷 테스트
+    @Test
+    public void classNamePointcutAdvisor() {
+        // 포인트컷 준비
+        NameMatchMethodPointcut classMethodPointcut = new NameMatchMethodPointcut() {
+            @Override
+            public ClassFilter getClassFilter() {
+                return new ClassFilter() { // 익명 내부 클래스 방식으로 클래스를 정의한다.
+                    @Override
+                    public boolean matches(Class<?> aClass) {
+                        // 클래스의 이름이 Hello 로 시작하는 것만 선택한다.
+                        return aClass.getSimpleName().startsWith("HelloT");
+                    }
+                };
+            }
+        };
+        classMethodPointcut.setMappedName("sayH*"); // sayH로 시작하는 메소드 이름을 가진 메소드만 선정한다.
+
+        // 테스트
+        checkAdvice(new HelloTarget(), classMethodPointcut, true); // 적용 클래스다
+
+        class HelloWorld extends HelloTarget {};
+        checkAdvice(new HelloWorld(), classMethodPointcut, false); // 적용 클래스가 아니다
+
+        class HelloToby extends HelloTarget {};
+        checkAdvice(new HelloToby(), classMethodPointcut, true); // 적용 클래스다
+    }
+
+    private void checkAdvice(Object target, Pointcut pointcut, boolean advice){
+        ProxyFactoryBean pfBean = new ProxyFactoryBean();
+        pfBean.setTarget(target);
+        pfBean.addAdvisor(new DefaultPointcutAdvisor(pointcut, new UppercaseAdvice()));
+        Hello proxiedHello = (Hello) pfBean.getObject();
+
+        if(advice) {
+            assertThat(proxiedHello.sayHello("Toby"), is("HELLO TOBY"));
+            assertThat(proxiedHello.sayHi("Toby"), is("HI TOBY"));
+            assertThat(proxiedHello.sayThankYou("Toby"), is("Thank You Toby"));
+        } else {
+            assertThat(proxiedHello.sayHello("Toby"), is("Hello Toby"));
+            assertThat(proxiedHello.sayHi("Toby"), is("Hi Toby"));
+            assertThat(proxiedHello.sayThankYou("Toby"), is("Thank You Toby"));
         }
     }
 }
