@@ -33,18 +33,22 @@
 
     <bean id="mailSender" class="test.DummyMailSender"/>
 
+    <!--트랜잭션 애노테이션 사용을 위한 설정-->
+    <tx:annotation-driven/>
+
+    <!--트랜잭션 애노테이션을 사용하면서 사라진 어드바이스 설정과 aop 설정-->
     <!--트랜잭션 어드바이스 빈 설정-->
-    <tx:advice id="transactionAdvice">
+    <!--<tx:advice id="transactionAdvice">
         <tx:attributes>
-            <tx:method name="get*" read-only="true"/> <!--이 메소드가 트랜잭션의 실제 시작 위치가 아니면 읽기전용 속성은 무시된다.-->
+            <tx:method name="get*" read-only="true"/> &lt;!&ndash;이 메소드가 트랜잭션의 실제 시작 위치가 아니면 읽기전용 속성은 무시된다.&ndash;&gt;
             <tx:method name="*"/>
         </tx:attributes>
-    </tx:advice>
+    </tx:advice>-->
 
     <!--빈 이름을 사용한 표현식을 갖는 포인트컷과 어드바이저-->
-    <aop:config>
+    <!--<aop:config>
         <aop:advisor advice-ref="transactionAdvice" pointcut="bean(*Service)" />
-    </aop:config>
+    </aop:config>-->
 
     <!--테스트용 UserService-->
     <!--스태틱 멤버 클래스는 $로 지정한다-->
