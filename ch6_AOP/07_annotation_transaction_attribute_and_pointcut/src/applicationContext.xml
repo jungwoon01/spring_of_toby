@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation=
+               "http://www.springframework.org/schema/beans
+               http://www.springframework.org/schema/beans/spring-beans.xsd
+               http://www.springframework.org/schema/aop
+               http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+               http://www.springframework.org/schema/tx
+               http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
+
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
+        <property name="driverClass" value="com.mysql.cj.jdbc.Driver"/>
+        <property name="url" value="jdbc:mysql://localhost/spring_of_toby"/>
+        <property name="username" value="root"/>
+        <property name="password" value="1234"/>
+    </bean>
+
+    <bean id="userDao" class="dao.UserDaoJdbc">
+        <property name="dataSource" ref="dataSource"/> <!--UserDao 내에 아직 jdbcContext 를 적용하지 않은 메소드가 있어서 제거 하지 않음-->
+    </bean>
+
+    <bean id="userService" class="service.UserServiceImpl">
+        <property name="userDao" ref="userDao"/>
+        <property name="mailSender" ref="mailSender"/>
+    </bean>
+
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager" >
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <bean id="mailSender" class="test.DummyMailSender"/>
+
+    <!--트랜잭션 어드바이스 빈 설정-->
+    <tx:advice id="transactionAdvice">
+        <tx:attributes>
+            <tx:method name="get*" read-only="true"/> <!--이 메소드가 트랜잭션의 실제 시작 위치가 아니면 읽기전용 속성은 무시된다.-->
+            <tx:method name="*"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <!--빈 이름을 사용한 표현식을 갖는 포인트컷과 어드바이저-->
+    <aop:config>
+        <aop:advisor advice-ref="transactionAdvice" pointcut="bean(*Service)" />
+    </aop:config>
+
+    <!--테스트용 UserService-->
+    <!--스태틱 멤버 클래스는 $로 지정한다-->
+    <bean
+            id="testUserService"
+            class="test.UserServiceTest$TestUserServiceImpl"
+            parent="userService"
+    />
+</beans>
