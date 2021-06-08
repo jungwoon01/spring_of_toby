@@ -10,10 +10,18 @@ import javax.sql.DataSource;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 public class UserDaoJdbc implements UserDao {
 
     private JdbcTemplate jdbcTemplate; // JdbcTemplate
+
+    private Map<String, String> sqlMap; // add() 를 위한 필드
+
+    // add sql 주입 받을 set 메서드
+    public void setSqlMap(Map<String, String> sqlMap) {
+        this.sqlMap = sqlMap;
+    }
 
     // 수정자 메소드이면서 JdbcTemplate 에 대한 생성, DI 작업을 동시에 수행한다.
     public void setDataSource(DataSource dataSource) {
@@ -37,10 +45,12 @@ public class UserDaoJdbc implements UserDao {
         }
     };
 
-    // jdbcTemplate 을 사용하는 add 메서드
-    public void add(User user){
-        this.jdbcTemplate.update("insert into user(id, name, password, level, login, recommend, email) values(?,?,?,?,?,?,?)",
-                user.getId(), user.getName(), user.getPassword(), user.getLevel().intValue(), user.getLogin(), user.getRecommend(), user.getEmail());
+    public void add(User user) {
+        this.jdbcTemplate.update(
+                sqlMap.get("add"), // sql 을 제거하고 외부에서 주입 받는다.
+                user.getId(), user.getName(), user.getPassword(), user.getLevel().intValue(),
+                user.getLogin(), user.getRecommend(), user.getEmail()
+        );
     }
 
     // id 값을 가진 row 를 가져오는 메서드
