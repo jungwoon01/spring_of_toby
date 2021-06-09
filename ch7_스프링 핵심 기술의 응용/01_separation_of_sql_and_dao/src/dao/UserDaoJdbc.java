@@ -5,22 +5,21 @@ import domain.Level;
 import domain.User;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import sqlService.SqlService;
 
 import javax.sql.DataSource;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
 
 public class UserDaoJdbc implements UserDao {
 
     private JdbcTemplate jdbcTemplate; // JdbcTemplate
 
-    private Map<String, String> sqlMap; // add() 를 위한 필드
+    private SqlService sqlService;
 
-    // add sql 주입 받을 set 메서드
-    public void setSqlMap(Map<String, String> sqlMap) {
-        this.sqlMap = sqlMap;
+    public void setSqlService(SqlService sqlService) {
+        this.sqlService = sqlService;
     }
 
     // 수정자 메소드이면서 JdbcTemplate 에 대한 생성, DI 작업을 동시에 수행한다.
@@ -47,7 +46,7 @@ public class UserDaoJdbc implements UserDao {
 
     public void add(User user) {
         this.jdbcTemplate.update(
-                sqlMap.get("add"), // sql 을 제거하고 외부에서 주입 받는다.
+                sqlService.getSql("userAdd"), // sql 을 제거하고 외부에서 주입 받는다.
                 user.getId(), user.getName(), user.getPassword(), user.getLevel().intValue(),
                 user.getLogin(), user.getRecommend(), user.getEmail()
         );
@@ -55,29 +54,29 @@ public class UserDaoJdbc implements UserDao {
 
     // id 값을 가진 row 를 가져오는 메서드
     public User get(String id) {
-        return this.jdbcTemplate.queryForObject("select * from user where id = ?",new Object[] {id} ,userRowMapper);
+        return this.jdbcTemplate.queryForObject(sqlService.getSql("userGet"),new Object[] {id} ,userRowMapper);
     }
 
     // JdbcTemplate 의 update 메서드를 사용하는 deleteAll()
     public void deleteAll(){
-        this.jdbcTemplate.update("delete from user");
+        this.jdbcTemplate.update(sqlService.getSql("userDeleteAll"));
     }
 
     // JdbcTemplate queryForInt() 를 이용해 만든 getCount()
-    // 리턴 타입이 int 인 쿼리만 적어주면 된다.
+// 리턴 타입이 int 인 쿼리만 적어주면 된다.
     public int getCount(){
-        return this.jdbcTemplate.queryForInt("select count(*) from user");
+        return this.jdbcTemplate.queryForInt(sqlService.getSql("userGetCount"));
     }
 
     // User 테이블의 모든 row 를 가져오는 메서드
     public List<User> getAll() {
-        return this.jdbcTemplate.query("select * from user order by id", userRowMapper);
+        return this.jdbcTemplate.query(sqlService.getSql("userGetAll"), userRowMapper);
     }
 
     // User 테이블 수정 메서드
     public void update(User user) {
         this.jdbcTemplate.update(
-                "update user set name = ?, password = ?, level = ?, login = ?, recommend = ?, email = ? where id = ? ",
+                sqlService.getSql("userUpdate"),
                 user.getName(), user.getPassword(), user.getLevel().intValue(), user.getLogin(), user.getRecommend(), user.getEmail(),
                 user.getId()
         );
