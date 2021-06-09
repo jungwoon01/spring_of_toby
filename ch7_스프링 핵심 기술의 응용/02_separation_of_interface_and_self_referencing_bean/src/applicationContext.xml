@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation=
+               "http://www.springframework.org/schema/beans
+               http://www.springframework.org/schema/beans/spring-beans.xsd
+
+
+               http://www.springframework.org/schema/tx
+               http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
+
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
+        <property name="driverClass" value="com.mysql.cj.jdbc.Driver"/>
+        <property name="url" value="jdbc:mysql://localhost/spring_of_toby"/>
+        <property name="username" value="root"/>
+        <property name="password" value="1234"/>
+    </bean>
+
+    <bean id="userDao" class="dao.UserDaoJdbc">
+        <property name="dataSource" ref="dataSource"/> <!--UserDao 내에 아직 jdbcContext 를 적용하지 않은 메소드가 있어서 제거 하지 않음-->
+        <property name="sqlService" ref="sqlService"/>
+    </bean>
+
+    <bean id="sqlService" class="sql_service.SimpleSqlService">
+        <property name="sqlMap">
+            <map>
+                <entry key="userAdd" value="insert into user(id, name, password,
+                    level, login, recommend, email) values(?,?,?,?,?,?,?)"/>
+                <entry key="userGet" value="select * from user where id = ?"/>
+                <entry key="userGetAll" value="select * from user order by id"/>
+                <entry key="userDeleteAll" value="delete from user"/>
+                <entry key="userGetCount" value="select count(*) from user"/>
+                <entry key="userUpdate" value="update user set name = ?, password = ?,
+                    level = ?, login = ?, recommend = ?, email = ? where id = ?"/>
+            </map>
+        </property>
+    </bean>
+
+    <bean id="userService" class="service.UserServiceImpl">
+        <property name="userDao" ref="userDao"/>
+        <property name="mailSender" ref="mailSender"/>
+    </bean>
+
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager" >
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <bean id="mailSender" class="test.DummyMailSender"/>
+
+    <!--트랜잭션 애노테이션 사용을 위한 설정-->
+    <tx:annotation-driven/>
+
+    <bean id="testUserService"
+            class="test.UserServiceTest$TestUserServiceImpl"
+            parent="userService"/>
+
+</beans>
